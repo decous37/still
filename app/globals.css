@@ -1,0 +1,318 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import 'shadcn/tailwind.css';
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-surface-sunken: var(--surface-sunken);
+  --color-block: var(--block);
+  --color-block-border: var(--block-border);
+  --color-ok: var(--ok);
+  --color-ok-surface: var(--ok-surface);
+  --color-retry: var(--retry);
+  --color-retry-surface: var(--retry-surface);
+  --color-hint: var(--hint);
+  --color-hint-surface: var(--hint-surface);
+  --font-sans: var(--font-system);
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --font-heading: var(--font-sans);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+  --shadow-card: var(--shadow-card-value);
+}
+
+/*
+ * 排版：英文优先系统无衬线，中文走系统中文字体，不分发任何专有字体文件。
+ */
+:root {
+  --font-system:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue',
+    Arial, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans SC',
+    sans-serif;
+
+  /* 8px 基础节奏 */
+  --space-1: 0.5rem;
+  --space-2: 1rem;
+  --space-3: 1.5rem;
+  --space-4: 2rem;
+
+  /* 动效只做轻微位移与淡入，150–220ms */
+  --duration-fast: 150ms;
+  --duration-base: 200ms;
+  --ease-quiet: cubic-bezier(0.2, 0, 0, 1);
+
+  /* 中英文各自的行高与字距，中文不套用英文的大字距 */
+  --leading-body: 1.65;
+  --leading-title: 1.25;
+  --tracking-body: 0;
+  --tracking-title: -0.015em;
+  --tracking-block: 0.01em;
+
+  --text-body: 1.0625rem;
+  --text-block: 1.375rem;
+  --text-title: clamp(1.75rem, 1.35rem + 1.6vw, 2.5rem);
+
+  --radius: 0.75rem;
+}
+
+:root:lang(zh-CN) {
+  --leading-body: 1.9;
+  --leading-title: 1.45;
+  --tracking-body: 0.01em;
+  --tracking-title: 0.01em;
+  --tracking-block: 0.06em;
+}
+
+:root {
+  --background: #f5f5f7;
+  --foreground: #1d1d1f;
+  --surface: #ffffff;
+  --surface-sunken: #ececf0;
+
+  --card: #ffffff;
+  --card-foreground: #1d1d1f;
+  --popover: #ffffff;
+  --popover-foreground: #1d1d1f;
+
+  /* 强调色 */
+  --primary: #0066cc;
+  --primary-foreground: #ffffff;
+  --ring: #0066cc;
+
+  --secondary: #ececf0;
+  --secondary-foreground: #1d1d1f;
+  --muted: #ececf0;
+  --muted-foreground: #5c5c63;
+  --accent: #e7f0fc;
+  --accent-foreground: #0a4a94;
+  --destructive: #b4232a;
+
+  --border: #e1e1e6;
+  --border-strong: #8e8e96;
+  --input: #d6d6dc;
+
+  /* 文字块 */
+  --block: #ffffff;
+  --block-border: #8e8e96;
+
+  /* 状态色：不只靠颜色传递，始终与文字或图标同时出现 */
+  --ok: #1f7a4d;
+  --ok-surface: #e6f4ec;
+  --retry: #9a5b00;
+  --retry-surface: #fdf1e0;
+  --hint: #4d4d55;
+  --hint-surface: #ececf0;
+
+  --shadow-card-value:
+    0 1px 2px rgb(17 17 19 / 4%), 0 8px 24px rgb(17 17 19 / 4%);
+
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --sidebar: #fafafc;
+  --sidebar-foreground: #1d1d1f;
+  --sidebar-primary: #0066cc;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #ececf0;
+  --sidebar-accent-foreground: #1d1d1f;
+  --sidebar-border: #e1e1e6;
+  --sidebar-ring: #0066cc;
+
+  color-scheme: light;
+}
+
+/* 深色主题靠边框与表面明度差表达层次，不叠阴影 */
+.dark {
+  --background: #111113;
+  --foreground: #f5f5f7;
+  --surface: #1c1c1e;
+  --surface-sunken: #26262a;
+
+  --card: #1c1c1e;
+  --card-foreground: #f5f5f7;
+  --popover: #1c1c1e;
+  --popover-foreground: #f5f5f7;
+
+  --primary: #64a8ff;
+  --primary-foreground: #0b1220;
+  --ring: #64a8ff;
+
+  --secondary: #26262a;
+  --secondary-foreground: #f5f5f7;
+  --muted: #26262a;
+  --muted-foreground: #a8a8b0;
+  --accent: #1b2735;
+  --accent-foreground: #cfe3ff;
+  --destructive: #ff8f8a;
+
+  --border: #2e2e33;
+  --border-strong: #6e6e78;
+  --input: #3a3a40;
+
+  --block: #232326;
+  --block-border: #6e6e78;
+
+  --ok: #7bd6a3;
+  --ok-surface: #16281f;
+  --retry: #f0b96a;
+  --retry-surface: #2a2116;
+  --hint: #c9c9d1;
+  --hint-surface: #26262a;
+
+  --shadow-card-value: none;
+
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --sidebar: #1c1c1e;
+  --sidebar-foreground: #f5f5f7;
+  --sidebar-primary: #64a8ff;
+  --sidebar-primary-foreground: #0b1220;
+  --sidebar-accent: #26262a;
+  --sidebar-accent-foreground: #f5f5f7;
+  --sidebar-border: #2e2e33;
+  --sidebar-ring: #64a8ff;
+
+  color-scheme: dark;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    @apply font-sans;
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-system);
+    font-size: var(--text-body);
+    line-height: var(--leading-body);
+    letter-spacing: var(--tracking-body);
+    /* 内容增长时自然滚动，不裁切 */
+    min-height: 100dvh;
+  }
+  h1,
+  h2,
+  h3 {
+    line-height: var(--leading-title);
+    letter-spacing: var(--tracking-title);
+  }
+}
+
+@layer components {
+  /* 页面外壳 960px，手机左右留白 20px */
+  .still-shell {
+    width: 100%;
+    max-width: 60rem;
+    margin-inline: auto;
+    padding-inline: 1.25rem;
+  }
+
+  /* 核心练习区 640px */
+  .still-core {
+    width: 100%;
+    max-width: 40rem;
+    margin-inline: auto;
+  }
+
+  .still-surface {
+    background-color: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: calc(var(--radius) * 1.4);
+    box-shadow: var(--shadow-card-value);
+  }
+
+  /* 焦点不只靠颜色：2px 描边 + 2px 偏移 */
+  .still-focusable:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+    border-radius: var(--radius);
+  }
+
+  /* 选项卡片：焦点落在内部隐藏的原生控件上时，整张卡片显示焦点环 */
+  .still-choice:has(input:focus-visible) {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+
+  /* 点击区域至少 44×44px */
+  .still-tap {
+    min-height: 2.75rem;
+    min-width: 2.75rem;
+  }
+
+  /* 反馈区保留最小空间，出现时不推挤主要操作 */
+  .still-feedback-slot {
+    min-height: 3.5rem;
+  }
+
+  .still-animate-in {
+    animation: still-fade-in var(--duration-base) var(--ease-quiet) both;
+  }
+}
+
+@keyframes still-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(2px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

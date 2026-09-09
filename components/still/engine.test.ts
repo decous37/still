@@ -64,23 +64,51 @@ describe('instant input', () => {
     expect(s.phase).toBe('success');
     expect(reduce(s, { type: 'undo' })).toBe(s);
   });
-  it('clears current input after an error so the user can restart', () => {
+  it('preserves input during red feedback, locks clicks, then resets in place', () => {
     let s = reduce(initial, { type: 'pick', id: q.blocks[0].id, q });
     s = reduce(s, { type: 'pick', id: q.blocks[2].id, q });
     expect(s.errors).toBe(1);
-    expect(s.error).toBeNull();
+    expect(s.error).toBe(q.blocks[2].text);
+    expect(s.selected).toHaveLength(1);
+    expect(s.phase).toBe('error');
+    expect(reduce(s, { type: 'pick', id: q.blocks[1].id, q })).toBe(s);
+    expect(reduce(s, { type: 'undo' })).toBe(s);
+    s = reduce(s, { type: 'retry' });
     expect(s.selected).toHaveLength(0);
     expect(s.phase).toBe('input');
     s = reduce(s, { type: 'pick', id: q.blocks[0].id, q });
     expect(s.selected).toHaveLength(1);
   });
-  it('undo clears error before accepted input; pause blocks input and transitions', () => {
+  it('pause preserves error and blocks retry until resumed', () => {
     let s = reduce(initial, { type: 'pick', id: q.blocks[2].id, q });
-    s = reduce(s, { type: 'undo' });
-    expect(s.error).toBeNull();
+    expect(s.phase).toBe('error');
     s = reduce(s, { type: 'pause' });
     expect(reduce(s, { type: 'pick', id: q.blocks[0].id, q })).toBe(s);
     expect(reduce(s, { type: 'transition' })).toBe(s);
+    expect(reduce(s, { type: 'retry' })).toBe(s);
+    s = reduce(s, { type: 'resume' });
+    expect(reduce(s, { type: 'retry' }).phase).toBe('input');
+  });
+  it('uses the visible draft order even when other sentence orders exist', () => {
+    const sentence = bank('zh-CN', 'sentence')[11];
+    const other = sentence.blocks.find((b) => b.text === '我')!;
+    expect(
+      reduce(initial, { type: 'pick', id: other.id, q: sentence }).phase,
+    ).toBe('error');
+    expect(sentence.answers.length).toBeGreaterThan(1);
+  });
+  it('keeps recall hidden after error recovery', () => {
+    const r = bank('en', 'recall')[0];
+    let s = reduce(initial, { type: 'reveal' });
+    s = reduce(s, {
+      type: 'pick',
+      id: r.blocks.find((b) => b.text !== r.answers[0][0])!.id,
+      q: r,
+    });
+    expect(s.phase).toBe('error');
+    s = reduce(s, { type: 'retry' });
+    expect(s.hidden).toBe(true);
+    expect(s.selected).toEqual([]);
   });
   it('does not accept recall before hiding, or used blocks twice', () => {
     const r = bank('en', 'recall')[0];

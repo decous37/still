@@ -1,4 +1,4 @@
-import { accepts, type Question } from './questions';
+import { type Question } from './questions';
 export type State = {
   selected: string[];
   error: string | null;
@@ -17,15 +17,27 @@ export const initial: State = {
 };
 export type Action =
   | { type: 'pick'; id: string; q: Question }
-  | { type: 'undo' | 'reveal' | 'pause' | 'resume' | 'transition' | 'reset' };
+  | {
+      type:
+        | 'undo'
+        | 'reveal'
+        | 'pause'
+        | 'resume'
+        | 'transition'
+        | 'reset'
+        | 'retry';
+    };
 export function reduce(s: State, a: Action): State {
   if (a.type === 'reset') return { ...initial };
   if (a.type === 'pause') return { ...s, paused: true };
   if (a.type === 'resume') return { ...s, paused: false };
   if (s.paused) return s;
+  if (a.type === 'retry')
+    return s.phase === 'error' ? { ...initial, hidden: s.hidden } : s;
   if (a.type === 'transition')
     return s.phase === 'success' ? { ...s, phase: 'transition' } : s;
-  if (s.phase === 'success' || s.phase === 'transition') return s;
+  if (s.phase === 'success' || s.phase === 'transition' || s.phase === 'error')
+    return s;
   if (a.type === 'undo')
     return s.error
       ? { ...s, error: null, phase: 'input' }
@@ -40,20 +52,15 @@ export function reduce(s: State, a: Action): State {
     const prefix = s.selected.map(
       (id) => a.q.blocks.find((b) => b.id === id)!.text,
     );
-    if (!accepts(a.q, prefix, block.text))
+    if (a.q.answers[0][prefix.length] !== block.text)
       return {
         ...s,
-        selected: [],
-        error: null,
+        error: block.text,
         errors: s.errors + 1,
-        phase: 'input',
+        phase: 'error',
       };
     const selected = [...s.selected, a.id];
-    const complete = a.q.answers.some(
-      (answer) =>
-        answer.length === selected.length &&
-        [...prefix, block.text].every((text, i) => text === answer[i]),
-    );
+    const complete = a.q.answers[0].length === selected.length;
     return {
       ...s,
       selected,

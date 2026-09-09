@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 import './air.css';
 import './live.css';
+import './fill.css';
 
 export const metadata: Metadata = {
   title: 'Still',

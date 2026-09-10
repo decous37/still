@@ -63,6 +63,10 @@
  * 排版：英文优先系统无衬线，中文走系统中文字体，不分发任何专有字体文件。
  */
 :root {
+  --glass-rim: rgba(255, 255, 255, 0.92);
+  --glass-foot: rgba(144, 162, 184, 0.28);
+  --glass-shadow: rgba(38, 56, 84, 0.13);
+  --glass-face: rgba(255, 255, 255, 0.66);
   --font-system:
     -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue',
     Arial, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans SC',
@@ -91,6 +95,13 @@
   --text-title: clamp(1.75rem, 1.35rem + 1.6vw, 2.5rem);
 
   --radius: 0.75rem;
+}
+
+.dark {
+  --glass-rim: rgba(214, 231, 255, 0.32);
+  --glass-foot: rgba(5, 12, 24, 0.64);
+  --glass-shadow: rgba(0, 6, 18, 0.36);
+  --glass-face: rgba(43, 54, 71, 0.64);
 }
 
 :root:lang(zh-CN) {

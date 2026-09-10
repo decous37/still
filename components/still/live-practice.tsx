@@ -1,10 +1,10 @@
 'use client';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Eye, Pause, Play, Undo2 } from 'lucide-react';
+import { Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { createPracticeSet, type Locale, type Mode } from './questions';
 import { initial, reduce, type State, type Action } from './engine';
-import { keySound, errorHaptic, stopFeedback } from './feedback';
+import { keySound, errorSound, errorHaptic, stopFeedback } from './feedback';
 import { DraftText } from './draft-text';
 import { CandidateWords } from './candidate-words';
 const copy = {
@@ -14,23 +14,17 @@ const copy = {
       'Fill the sentence from left to right.',
       'Read the sentence, then hide a word.',
     ],
-    pause: 'Pause',
-    resume: 'Resume',
-    undo: 'Undo',
+    resume: 'Click to continue',
     ready: 'Hide word',
     reveal: 'Read again',
-    leave: 'Finish',
     error: 'Incorrect. The sentence will reset.',
     success: 'Complete.',
   },
   'zh-CN': {
     instructions: ['按顺序填满词语', '按顺序填满句子', '读一遍，再藏起一个词'],
-    pause: '暂停',
-    resume: '继续',
-    undo: '撤回',
+    resume: '点击继续',
     ready: '藏起词语',
     reveal: '再读一遍',
-    leave: '结束',
     error: '输入错误，句子将重置。',
     success: '已完成。',
   },
@@ -38,25 +32,32 @@ const copy = {
 export function LivePractice({
   lang,
   mode,
+  groupId,
   selectedQuestionId,
   active,
   sound,
   haptics,
+  completedCount,
   onFinish,
   onQuestionSelect,
   onQuestionComplete,
 }: {
   lang: Locale;
   mode: Mode;
+  groupId: string;
   selectedQuestionId?: string;
   active: boolean;
   sound: boolean;
   haptics: boolean;
+  completedCount: number;
   onFinish: () => void;
   onQuestionSelect: (id: string) => void;
   onQuestionComplete: (id: string) => void;
 }) {
-  const round = useMemo(() => createPracticeSet(lang, mode), [lang, mode]);
+  const round = useMemo(
+    () => createPracticeSet(lang, mode, groupId),
+    [lang, mode, groupId],
+  );
   const index = Math.max(
       0,
       round.findIndex((q) => q.id === selectedQuestionId),
@@ -97,7 +98,9 @@ export function LivePractice({
   useEffect(() => {
     if (!enabled) return;
     if (state.phase === 'error') {
-      const timer = setTimeout(() => send({ type: 'retry' }), 300);
+      const timer = setTimeout(() => {
+        if (!document.hidden) send({ type: 'retry' });
+      }, 300);
       return () => clearTimeout(timer);
     }
     if (state.phase === 'success') {
@@ -105,11 +108,14 @@ export function LivePractice({
         completed.current = true;
         onQuestionComplete(q.id);
       }
-      const timer = setTimeout(() => send({ type: 'transition' }), 250);
+      const timer = setTimeout(() => {
+        if (!document.hidden) send({ type: 'transition' });
+      }, 250);
       return () => clearTimeout(timer);
     }
     if (state.phase === 'transition') {
       const timer = setTimeout(() => {
+        if (document.hidden || latest.current.paused) return;
         if (index === round.length - 1) onFinish();
         else onQuestionSelect(round[index + 1].id);
       }, 160);
@@ -132,7 +138,10 @@ export function LivePractice({
     if (after === before) return;
     if (after.selected.length > before.selected.length) {
       if (sound) keySound();
-    } else if (after.phase === 'error' && haptics) errorHaptic();
+    } else if (after.phase === 'error') {
+      if (sound) errorSound();
+      if (haptics) errorHaptic();
+    }
   }
   return (
     <section
@@ -140,6 +149,15 @@ export function LivePractice({
     >
       <div className="practice-kicker">
         {String(index + 1).padStart(2, '0')} <span>/ {round.length}</span>
+      </div>
+      <progress
+        className="sr-only"
+        aria-label={lang === 'en' ? 'Round progress' : '本轮进度'}
+        max={round.length}
+        value={completedCount}
+      />
+      <div className="round-light" aria-hidden="true">
+        <span style={{ width: `${(completedCount / round.length) * 100}%` }} />
       </div>
       <h1 ref={heading} tabIndex={-1} className="sr-only">
         {q.mode === 'sentence'
@@ -165,7 +183,6 @@ export function LivePractice({
               className="resume-control"
               onClick={() => send({ type: 'resume' })}
             >
-              <Play />
               {c.resume}
             </Button>
           </div>
@@ -205,36 +222,6 @@ export function LivePractice({
             ? c.success
             : ''}
       </output>
-      <div
-        className="edit-tools"
-        style={{ visibility: state.paused ? 'hidden' : 'visible' }}
-      >
-        <Button
-          variant="ghost"
-          className="air-text-button"
-          disabled={locked || !state.selected.length}
-          onClick={() => send({ type: 'undo' })}
-        >
-          <Undo2 />
-          {c.undo}
-        </Button>
-        <span className="kicker-divider" />
-        <Button
-          variant="ghost"
-          className="air-text-button"
-          onClick={() => {
-            send({ type: 'pause' });
-            stopFeedback();
-          }}
-        >
-          <Pause />
-          {c.pause}
-        </Button>
-        <span className="kicker-divider" />
-        <a className="finish-link" href="#complete">
-          {c.leave}
-        </a>
-      </div>
     </section>
   );
 }

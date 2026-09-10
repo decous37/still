@@ -25,6 +25,13 @@ function stripEndingPeriod(text: string) {
   return text.replace(/[。.]$/, '');
 }
 
+export function stripSentenceEnding(text: string) {
+  return text.replace(
+    /[。.!！?？…]+(?=[。.!！?？…”’"'」』）)\]】]*\s*$)/gu,
+    '',
+  );
+}
+
 const words: Record<Locale, WordItem[]> = {
   en: [
     { id: 'en-word-0', text: 'PAUSE' },
@@ -674,7 +681,7 @@ function shuffled<T>(items: T[]): T[] {
   return result;
 }
 
-export function bank(locale: Locale, mode: Mode): Question[] {
+function legacyBank(locale: Locale, mode: Mode): Question[] {
   if (mode === 'word') {
     return words[locale].map((word) => ({
       id: word.id,
@@ -709,8 +716,8 @@ export function bank(locale: Locale, mode: Mode): Question[] {
     id: item.id,
     mode,
     before: item.before,
-    after: item.after,
-    reference: `${item.before}${item.answer}${item.after}`,
+    after: stripSentenceEnding(item.after),
+    reference: stripSentenceEnding(`${item.before}${item.answer}${item.after}`),
     answers: [[item.answer]],
     blocks: [item.answer, ...item.distractors].map((text, n) => ({
       id: `${item.id}-${n}`,
@@ -719,8 +726,111 @@ export function bank(locale: Locale, mode: Mode): Question[] {
   }));
 }
 
-export function createPracticeSet(locale: Locale, mode: Mode): Question[] {
-  return bank(locale, mode).map((q) => ({
+export type QuestionGroup = {
+  id: string;
+  mode: Mode;
+  title: Record<Locale, string>;
+  questionIds: Record<Locale, string[]>;
+};
+
+function rows(locale: Locale, mode: Mode) {
+  return (
+    mode === 'word' ? wordRows : mode === 'sentence' ? sentenceRows : recallRows
+  )[locale];
+}
+
+function entries(locale: Locale, mode: Mode, theme: keyof typeof wordRows.en) {
+  return rows(locale, mode)
+    [theme].trim()
+    .split('\n')
+    .map((line) => {
+      if (line.startsWith('@'))
+        return { id: `${locale}-${mode}-${line.slice(1)}`, content: null };
+      const split = line.indexOf('~');
+      return {
+        id: `${locale}-${mode}-${theme}-${line.slice(0, split)}`,
+        content: line.slice(split + 1),
+      };
+    });
+}
+
+const groupCache = new Map<Mode, QuestionGroup[]>();
+const bankCache = new Map<string, Question[]>();
+export function groups(mode: Mode): QuestionGroup[] {
+  const cached = groupCache.get(mode);
+  if (cached) return cached;
+  const result = themes.map(([theme, zh, en]) => ({
+    id: `${mode}-${theme}`,
+    mode,
+    title: { en, 'zh-CN': zh },
+    questionIds: {
+      en: entries('en', mode, theme).map((q) => q.id),
+      'zh-CN': entries('zh-CN', mode, theme).map((q) => q.id),
+    },
+  }));
+  groupCache.set(mode, result);
+  return result;
+}
+
+export function bank(locale: Locale, mode: Mode): Question[] {
+  const key = `${locale}:${mode}`;
+  const cached = bankCache.get(key);
+  if (cached) return cached;
+  const additions: Question[] = [];
+  for (const [theme] of themes) {
+    for (const { id, content } of entries(locale, mode, theme)) {
+      if (content === null) continue;
+      const parts = content.split('|');
+      const answer =
+        mode === 'word'
+          ? Array.from(content)
+          : mode === 'sentence'
+            ? parts
+            : [parts[1]];
+      const after =
+        mode === 'recall' ? stripSentenceEnding(parts[2]) : undefined;
+      additions.push({
+        id,
+        mode,
+        reference:
+          mode === 'recall'
+            ? `${parts[0]}${parts[1]}${after}`
+            : answer.join(mode === 'sentence' && locale === 'en' ? ' ' : ''),
+        answers: [answer],
+        blocks: (mode === 'recall'
+          ? [parts[1], parts[3], parts[4]]
+          : answer
+        ).map((text, i) => ({ id: `${id}-${i}`, text })),
+        ...(mode === 'recall' ? { before: parts[0], after } : {}),
+      });
+    }
+  }
+  const result = [...legacyBank(locale, mode), ...additions];
+  bankCache.set(key, result);
+  return result;
+}
+
+export function groupQuestions(
+  locale: Locale,
+  mode: Mode,
+  groupId: string,
+): Question[] {
+  const group = groups(mode).find((g) => g.id === groupId);
+  if (!group) throw new Error(`Unknown group: ${groupId}`);
+  const pool = new Map(bank(locale, mode).map((q) => [q.id, q]));
+  return group.questionIds[locale].map((id) => {
+    const q = pool.get(id);
+    if (!q) throw new Error(`Missing question: ${id}`);
+    return q;
+  });
+}
+
+export function createPracticeSet(
+  locale: Locale,
+  mode: Mode,
+  groupId: string,
+): Question[] {
+  return groupQuestions(locale, mode, groupId).map((q) => ({
     ...q,
     blocks: shuffled(q.blocks),
   }));
@@ -735,3 +845,4 @@ export function accepts(q: Question, prefix: string[], text: string) {
     [...prefix, text].every((word, i) => answer[i] === word),
   );
 }
+import { themes, wordRows, sentenceRows, recallRows } from './group-content';

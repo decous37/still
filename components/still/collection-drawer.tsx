@@ -1,5 +1,5 @@
 'use client';
-import { Check, X } from 'lucide-react';
+import { X } from 'lucide-react';
 import {
   Sheet,
   SheetTrigger,
@@ -9,7 +9,13 @@ import {
   SheetClose,
 } from '@/components/ui/sheet';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { bank, type Locale, type Mode } from './questions';
+import { groups, groupQuestions, type Locale, type Mode } from './questions';
+import {
+  Accordion,
+  AccordionItem,
+  AccordionTrigger,
+  AccordionContent,
+} from '@/components/ui/accordion';
 const modes: Mode[] = ['word', 'sentence', 'recall'];
 export function CollectionDrawer({
   lang,
@@ -18,6 +24,7 @@ export function CollectionDrawer({
   mode,
   onModeChange,
   currentId,
+  currentGroupId,
   counts,
   onSelect,
 }: {
@@ -27,14 +34,15 @@ export function CollectionDrawer({
   mode: Mode;
   onModeChange: (mode: Mode) => void;
   currentId: string;
+  currentGroupId: string;
   counts: Record<string, number>;
-  onSelect: (mode: Mode, id: string) => void;
+  onSelect: (mode: Mode, groupId: string, id: string) => void;
 }) {
   const title = lang === 'en' ? 'Collection' : '集合';
   const names =
     lang === 'en' ? ['Words', 'Sentences', 'Recall'] : ['重组', '句子', '补回'];
   return (
-    <Sheet open={open} onOpenChange={onOpenChange} modal="trap-focus">
+    <Sheet open={open} onOpenChange={onOpenChange} modal={true}>
       <SheetTrigger className="collection-trigger" aria-label={title}>
         {title}
       </SheetTrigger>
@@ -67,25 +75,53 @@ export function CollectionDrawer({
           </TabsList>
           {modes.map((m) => (
             <TabsContent value={m} key={m} className="drawer-list">
-              {bank(lang, m).map((q, i) => (
-                <button
-                  className="drawer-question"
-                  aria-current={q.id === currentId ? 'true' : undefined}
-                  key={q.id}
-                  onClick={() => onSelect(m, q.id)}
-                >
-                  <span className="drawer-number">
-                    {String(i + 1).padStart(2, '0')}
-                  </span>
-                  <span className="drawer-question-title">{q.reference}</span>
-                  {counts[q.id] > 0 && (
-                    <Check
-                      size={15}
-                      aria-label={lang === 'en' ? 'Completed' : '已完成'}
-                    />
-                  )}
-                </button>
-              ))}
+              <Accordion
+                key={`${open}-${m}-${currentGroupId}`}
+                multiple={false}
+                defaultValue={[
+                  groups(m).some((g) => g.id === currentGroupId)
+                    ? currentGroupId
+                    : groups(m)[0].id,
+                ]}
+              >
+                {groups(m).map((group, groupIndex) => (
+                  <AccordionItem value={group.id} key={group.id}>
+                    <AccordionTrigger className="group-trigger">
+                      <span className="drawer-number">
+                        {String(groupIndex + 1).padStart(2, '0')}
+                      </span>
+                      <span>{group.title[lang]}</span>
+                    </AccordionTrigger>
+                    <AccordionContent>
+                      {groupQuestions(lang, m, group.id).map((q, i) => (
+                        <button
+                          className="drawer-question"
+                          aria-current={q.id === currentId ? 'true' : undefined}
+                          key={q.id}
+                          onClick={() => onSelect(m, group.id, q.id)}
+                        >
+                          <span className="drawer-number">
+                            {String(i + 1).padStart(2, '0')}
+                          </span>
+                          <span className="drawer-question-title">
+                            {q.reference}
+                          </span>
+                          <span
+                            className={`drawer-count ${counts[q.id] > 0 ? 'has-completions' : ''}`}
+                            aria-label={
+                              lang === 'en'
+                                ? `Completed ${counts[q.id] ?? 0} times`
+                                : `完成 ${counts[q.id] ?? 0} 次`
+                            }
+                          >
+                            {counts[q.id] ?? 0}
+                          </span>
+                        </button>
+                      ))}
+                    </AccordionContent>
+                  </AccordionItem>
+                ))}
+              </Accordion>
             </TabsContent>
           ))}
         </Tabs>

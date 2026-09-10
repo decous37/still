@@ -30,7 +30,12 @@ export type Action =
 export function reduce(s: State, a: Action): State {
   if (a.type === 'reset') return { ...initial };
   if (a.type === 'pause') return { ...s, paused: true };
-  if (a.type === 'resume') return { ...s, paused: false };
+  if (a.type === 'resume')
+    return {
+      ...s,
+      paused: false,
+      phase: s.phase === 'transition' ? 'success' : s.phase,
+    };
   if (s.paused) return s;
   if (a.type === 'retry')
     return s.phase === 'error' ? { ...initial, hidden: s.hidden } : s;

@@ -13,7 +13,15 @@ import { Button } from '@/components/ui/button';
 import { usePreferences } from './use-preferences';
 
 import { LivePractice } from './live-practice';
-import { bank } from './questions';
+import { groups, groupQuestions } from './questions';
+import {
+  readGroupProgress,
+  saveGroupProgress,
+  completeInGroup,
+  restartGroup,
+  progressKey,
+  type GroupProgress,
+} from './group-progress';
 import { useFeedbackPreferences } from './use-feedback-preferences';
 import { stopFeedback } from './feedback';
 import { Switch } from '@/components/ui/switch';
@@ -49,7 +57,7 @@ const copybook = {
     light: 'Light',
     dark: 'Dark',
     back: 'Back to practice',
-    again: 'Practice again',
+    again: 'Repeat this group',
   },
   'zh-CN': {
     practice: '练习',
@@ -62,19 +70,30 @@ const copybook = {
     light: '明亮',
     dark: '深色',
     back: '返回练习',
-    again: '再练一次',
+    again: '再练本组',
   },
 };
 export function AirApp() {
   const { ready, lang, theme, toggleLang, toggleTheme } = usePreferences();
   const [view, setView] = useState<View>('practice');
-  const [mode, setMode] = useState<Mode>('sentence');
+  const [mode, setMode] = useState<Mode>('word');
+  const [groupId, setGroupId] = useState('word-home');
   const [collectionOpen, setCollectionOpen] = useState(false);
-  const [browseMode, setBrowseMode] = useState<Mode>('sentence');
+  const [browseMode, setBrowseMode] = useState<Mode>('word');
   const [selectedQuestionId, setSelectedQuestionId] = useState<string>();
   const [completionCounts, setCompletionCounts] =
     useState<Record<string, number>>(readCompletionCounts);
   const [roundKey, setRoundKey] = useState(0);
+  const [groupProgress, setGroupProgress] = useState<GroupProgress>(() => {
+    try {
+      return readGroupProgress(window.localStorage, readCompletionCounts());
+    } catch {
+      return {};
+    }
+  });
+  const currentGroups = groups(mode);
+  const groupIndex = currentGroups.findIndex((g) => g.id === groupId);
+  const currentQuestions = groupQuestions(lang, mode, groupId);
   const { sound, haptics, toggleSound, toggleHaptics } =
     useFeedbackPreferences();
   const c = copybook[lang];
@@ -85,7 +104,8 @@ export function AirApp() {
       setCollectionOpen(hash === 'library');
       setView(hash === 'settings' || hash === 'complete' ? hash : 'practice');
     };
-    sync();
+    // A reload always opens the first word group, not a stale settings/end hash.
+    window.history.replaceState(null, '', '#practice');
     window.addEventListener('hashchange', sync);
     return () => window.removeEventListener('hashchange', sync);
   }, []);
@@ -102,11 +122,22 @@ export function AirApp() {
       // Local progress is helpful, but practice should keep working without it.
     }
   }, [completionCounts]);
+  useEffect(() => {
+    if (!ready) return;
+    try {
+      saveGroupProgress(window.localStorage, groupProgress);
+    } catch {}
+  }, [groupProgress, ready]);
   function reset() {
     stopFeedback();
-    const current = selectedQuestionId ?? bank(lang, mode)[0].id;
     const nextLang = lang === 'en' ? 'zh-CN' : 'en';
-    setSelectedQuestionId(current.replace(lang + '-', nextLang + '-'));
+    const slot = Math.max(
+      0,
+      currentQuestions.findIndex((q) => q.id === selectedQuestionId),
+    );
+    setSelectedQuestionId(groupQuestions(nextLang, mode, groupId)[slot].id);
+    setView('practice');
+    window.location.assign('#practice');
   }
   function openCollection(open: boolean) {
     stopFeedback();
@@ -115,28 +146,35 @@ export function AirApp() {
     if (!open && window.location.hash === '#library')
       window.history.replaceState(null, '', '#practice');
   }
-  function selectFromCollection(nextMode: Mode, id: string) {
-    const current = selectedQuestionId ?? bank(lang, mode)[0].id;
+  function selectFromCollection(nextMode: Mode, nextGroup: string, id: string) {
+    const current = selectedQuestionId ?? currentQuestions[0].id;
     if (nextMode !== mode || id !== current || view === 'complete') {
       setMode(nextMode);
+      setGroupId(nextGroup);
       setSelectedQuestionId(id);
       setRoundKey((k) => k + 1);
     }
     openCollection(false);
     window.location.assign('#practice');
   }
-  function choose(value: Mode) {
-    setMode(value);
-    setSelectedQuestionId(bank(lang, value)[0]?.id);
+  function choose(nextGroup: string, restart = false) {
+    if (restart) setGroupProgress((p) => restartGroup(p, lang, nextGroup));
+    stopFeedback();
+    setGroupId(nextGroup);
+    setSelectedQuestionId(groupQuestions(lang, mode, nextGroup)[0].id);
     setRoundKey((k) => k + 1);
     window.location.assign('#practice');
   }
-  const recordCompletion = useCallback((id: string) => {
-    setCompletionCounts((counts) => ({
-      ...counts,
-      [id]: (counts[id] ?? 0) + 1,
-    }));
-  }, []);
+  const recordCompletion = useCallback(
+    (id: string) => {
+      setGroupProgress((p) => completeInGroup(p, lang, mode, groupId, id));
+      setCompletionCounts((counts) => ({
+        ...counts,
+        [id]: (counts[id] ?? 0) + 1,
+      }));
+    },
+    [lang, mode, groupId],
+  );
   if (!ready)
     return (
       <div className="still-loading">
@@ -153,42 +191,46 @@ export function AirApp() {
           className="air-brand"
           href="#practice"
           onClick={() => {
-            if (view === 'complete') choose(mode);
+            if (view === 'complete') choose(groupId);
           }}
         >
           still<span className="brand-dot">.</span>
         </a>
-        <nav
-          className="air-nav"
-          aria-label={lang === 'en' ? 'Navigation' : '导航'}
-        >
-          <CollectionDrawer
-            lang={lang}
-            open={collectionOpen}
-            onOpenChange={openCollection}
-            mode={browseMode}
-            onModeChange={setBrowseMode}
-            currentId={selectedQuestionId ?? bank(lang, mode)[0].id}
-            counts={completionCounts}
-            onSelect={selectFromCollection}
-          />
-          {view !== 'practice' && (
+        <div className="air-navigation-row">
+          <nav
+            className="air-nav"
+            aria-label={lang === 'en' ? 'Navigation' : '导航'}
+          >
             <a
               href="#practice"
+              aria-current={view === 'practice' ? 'page' : undefined}
               onClick={() => {
-                if (view === 'complete') choose(mode);
+                if (view === 'complete') choose(groupId);
               }}
             >
               {c.practice}
             </a>
-          )}
-          <a
-            href="#settings"
-            aria-current={view === 'settings' ? 'page' : undefined}
-          >
-            {c.settings}
-          </a>
-        </nav>
+            <a
+              href="#settings"
+              aria-current={view === 'settings' ? 'page' : undefined}
+            >
+              {c.settings}
+            </a>
+          </nav>
+          <div className="collection-position">
+            <CollectionDrawer
+              lang={lang}
+              open={collectionOpen}
+              onOpenChange={openCollection}
+              mode={browseMode}
+              onModeChange={setBrowseMode}
+              currentGroupId={groupId}
+              currentId={selectedQuestionId ?? currentQuestions[0].id}
+              counts={completionCounts}
+              onSelect={selectFromCollection}
+            />
+          </div>
+        </div>
         <div className="air-controls">
           <Button
             variant="ghost"
@@ -230,13 +272,17 @@ export function AirApp() {
       <main id="main" className={`air-main view-${view}`}>
         <div hidden={view !== 'practice'}>
           <LivePractice
-            key={`${lang}-${mode}-${roundKey}-${selectedQuestionId ?? 'first'}`}
+            key={`${lang}-${mode}-${groupId}-${roundKey}-${selectedQuestionId ?? 'first'}`}
             lang={lang}
             mode={mode}
+            groupId={groupId}
             selectedQuestionId={selectedQuestionId}
             active={view === 'practice' && !collectionOpen}
             sound={sound}
             haptics={haptics}
+            completedCount={
+              (groupProgress[progressKey(lang, groupId)] ?? []).length
+            }
             onFinish={finish}
             onQuestionSelect={setSelectedQuestionId}
             onQuestionComplete={recordCompletion}
@@ -249,12 +295,12 @@ export function AirApp() {
               <div className="setting-row">
                 <div>
                   <h2 id="sound-label">
-                    {lang === 'en' ? 'Typing sound' : '打字音效'}
+                    {lang === 'en' ? 'Sound feedback' : '输入音效'}
                   </h2>
                   <p>
                     {lang === 'en'
-                      ? 'A soft click for each correct piece.'
-                      : '每一次正确输入，一声轻轻的回应。'}
+                      ? 'Key clicks and a brief error tone.'
+                      : '清脆键击与轻声报错'}
                   </p>
                 </div>
                 <Switch
@@ -323,11 +369,35 @@ export function AirApp() {
             <div className="completion-mark">
               <Check strokeWidth={1.25} />
             </div>
-            <h1>{lang === 'en' ? 'Complete' : '已完成'}</h1>
-            <Button className="air-primary" onClick={() => choose(mode)}>
-              {c.again}
-              <ArrowRight />
-            </Button>
+            <h1>
+              {lang === 'en' ? 'Group practice finished' : '本组练习结束'}
+            </h1>
+            <div className="group-end-actions">
+              <Button
+                className="air-primary"
+                onClick={() =>
+                  groupIndex < currentGroups.length - 1
+                    ? choose(currentGroups[groupIndex + 1].id)
+                    : openCollection(true)
+                }
+              >
+                {groupIndex < currentGroups.length - 1
+                  ? lang === 'en'
+                    ? 'Next group'
+                    : '下一组'
+                  : lang === 'en'
+                    ? 'Choose a group'
+                    : '选择题组'}
+                <ArrowRight />
+              </Button>
+              <Button
+                variant="outline"
+                className="preference-button"
+                onClick={() => choose(groupId, true)}
+              >
+                {c.again}
+              </Button>
+            </div>
           </section>
         )}
       </main>

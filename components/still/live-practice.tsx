@@ -4,7 +4,13 @@ import { Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { createPracticeSet, type Locale, type Mode } from './questions';
 import { initial, reduce, type State, type Action } from './engine';
-import { keySound, errorSound, errorHaptic, stopFeedback } from './feedback';
+import {
+  keySound,
+  errorSound,
+  successSound,
+  errorHaptic,
+  stopFeedback,
+} from './feedback';
 import { DraftText } from './draft-text';
 import { CandidateWords } from './candidate-words';
 const copy = {
@@ -137,7 +143,10 @@ export function LivePractice({
     const { before, after } = send({ type: 'pick', id, q });
     if (after === before) return;
     if (after.selected.length > before.selected.length) {
-      if (sound) keySound();
+      if (sound) {
+        if (after.phase === 'success') successSound();
+        else keySound();
+      }
     } else if (after.phase === 'error') {
       if (sound) errorSound();
       if (haptics) errorHaptic();

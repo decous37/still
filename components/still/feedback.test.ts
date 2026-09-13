@@ -9,6 +9,7 @@ function audioMock(resume = () => Promise.resolve()) {
   const sources: {
     start: ReturnType<typeof vi.fn>;
     stop: ReturnType<typeof vi.fn>;
+    buffer?: { getChannelData: () => Float32Array };
   }[] = [];
   const parameter = () => ({
     value: 0,
@@ -40,8 +41,9 @@ function audioMock(resume = () => Promise.resolve()) {
       currentTime = 0;
       destination = {};
       resume = resume;
-      createBuffer() {
-        return { getChannelData: () => new Float32Array(2160) };
+      createBuffer(_channels: number, length: number) {
+        const data = new Float32Array(length);
+        return { getChannelData: () => data };
       }
       createBufferSource = source;
       createOscillator = source;
@@ -56,14 +58,31 @@ function audioMock(resume = () => Promise.resolve()) {
   return sources;
 }
 
-it('plays one source per key/error and stops active feedback', async () => {
+it('plays quiet keys and single immediate tones; cancels all sources', async () => {
   const sources = audioMock();
-  const { keySound, errorSound, stopFeedback } = await import('./feedback');
+  const { keySound, errorSound, successSound, stopFeedback } =
+    await import('./feedback');
   keySound();
   errorSound();
+  successSound();
   await Promise.resolve();
-  expect(sources).toHaveLength(2);
+  expect(sources).toHaveLength(3);
   sources.forEach((s) => expect(s.start).toHaveBeenCalledTimes(1));
+  expect(sources[2].start).toHaveBeenCalledWith(0);
+  sources.forEach((s, index) => {
+    const samples = [...s.buffer!.getChannelData()].filter(
+      (value) => value !== 0,
+    );
+    const rms = Math.sqrt(
+      samples.reduce((sum, value) => sum + value * value, 0) / samples.length,
+    );
+    if (index > 0) expect(rms).toBeCloseTo(0.018, 3);
+    else expect(rms).toBeLessThan(0.02);
+    expect(Math.max(...samples.map(Math.abs))).toBeLessThanOrEqual(0.066);
+  });
+  const error = sources[1].buffer!.getChannelData();
+  expect(error).toHaveLength(4320);
+  expect(sources[2].buffer!.getChannelData()).toHaveLength(8640);
   stopFeedback();
   sources.forEach((s) => expect(s.stop).toHaveBeenCalled());
 });
@@ -74,9 +93,11 @@ it('cancels pending sounds before audio permission resolves', async () => {
     release = resolve;
   });
   const sources = audioMock(() => pending);
-  const { keySound, errorSound, stopFeedback } = await import('./feedback');
+  const { keySound, errorSound, successSound, stopFeedback } =
+    await import('./feedback');
   keySound();
   errorSound();
+  successSound();
   stopFeedback();
   release();
   await Promise.resolve();
@@ -85,10 +106,12 @@ it('cancels pending sounds before audio permission resolves', async () => {
 
 it('does not throw when audio is unavailable', async () => {
   vi.stubGlobal('AudioContext', undefined);
-  const { keySound, errorSound, stopFeedback } = await import('./feedback');
+  const { keySound, errorSound, successSound, stopFeedback } =
+    await import('./feedback');
   expect(() => {
     keySound();
     errorSound();
+    successSound();
     stopFeedback();
   }).not.toThrow();
 });

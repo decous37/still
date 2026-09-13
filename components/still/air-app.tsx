@@ -299,8 +299,8 @@ export function AirApp() {
                   </h2>
                   <p>
                     {lang === 'en'
-                      ? 'Key clicks and a brief error tone.'
-                      : '清脆键击与轻声报错'}
+                      ? 'Soft key clicks and single error or completion tones.'
+                      : '轻薄键击与轻柔的单音反馈'}
                   </p>
                 </div>
                 <Switch

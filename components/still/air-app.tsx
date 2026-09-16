@@ -16,6 +16,8 @@ import { LivePractice } from './live-practice';
 import { groups, groupQuestions } from './questions';
 import {
   readGroupProgress,
+  completionStorageKey,
+  readCompletionCounts as readStoredCounts,
   saveGroupProgress,
   completeInGroup,
   restartGroup,
@@ -30,16 +32,10 @@ import { CollectionDrawer } from './collection-drawer';
 type View = 'practice' | 'settings' | 'complete';
 type Mode = 'word' | 'sentence' | 'recall';
 
-const completionStorageKey = 'still:question-completions:v1';
 function readCompletionCounts(): Record<string, number> {
   if (typeof window === 'undefined') return {};
   try {
-    const stored = window.localStorage.getItem(completionStorageKey);
-    if (!stored) return {};
-    const parsed = JSON.parse(stored);
-    return parsed && typeof parsed === 'object'
-      ? (parsed as Record<string, number>)
-      : {};
+    return readStoredCounts(window.localStorage);
   } catch {
     return {};
   }
@@ -86,7 +82,7 @@ export function AirApp() {
   const [roundKey, setRoundKey] = useState(0);
   const [groupProgress, setGroupProgress] = useState<GroupProgress>(() => {
     try {
-      return readGroupProgress(window.localStorage, readCompletionCounts());
+      return readGroupProgress(window.localStorage);
     } catch {
       return {};
     }

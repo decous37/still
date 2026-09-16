@@ -14,9 +14,11 @@ Opening or refreshing the page starts at the first question in the first Words g
 | --- | --- |
 | Words | Follow the visible word and select its characters from left to right |
 | Sentences | Select word blocks in the order shown by the sentence |
-| Recall | Read the sentence, choose “Hide word,” then fill the gap from three options |
+| Recall | Read, hide, and fill from left to right: one gap with three options for short questions, two gaps sharing four options for medium and long questions |
 
 Correct selections turn green. A wrong selection briefly turns the whole text red, then resets the question. Finishing a question moves you to the next one automatically. For repeated characters, any unused block with the matching text is accepted.
+
+For two-gap questions, a wrong answer in either gap resets both without revealing the sentence. “Read again” clears the attempt and shows the original text.
 
 Use Collection in the header to browse modes, groups, and questions. Opening Collection or Preferences freezes the exercise. After leaving the tab for another app or page, click “Continue” when you return.
 
@@ -26,10 +28,22 @@ Regular selections use a light key click. Finishing a question plays a short met
 
 The bank contains **600 questions**: 300 in Chinese and 300 in English. Each language has three modes, each mode has ten groups, and each group has ten questions.
 
+In each group, question 1 is short and question 9 is long; the other eight are medium. That makes 480 medium questions (80%), 60 short, and 60 long.
+
+| Content | Short | Medium | Long |
+| --- | --- | --- | --- |
+| Chinese Words | 3–5 characters | 6–7 characters | 8–10 characters |
+| English Words | 4–6 letters | 7–9 letters | 10–12 letters |
+| Chinese Sentences / Recall | 10–15 characters | 16–24 characters | 25–32 characters |
+| English Sentences / Recall | 6–8 words | 9–13 words | 14–18 words |
+| Sentence blocks | 3–4 | 5–6 | 7–8 |
+
+Chinese counts exclude punctuation and spaces. English contractions and hyphenated words count as one word. English word exercises use lowercase; sentences follow normal capitalization rules.
+
 The ten themes are Home, Nature, Light, Weather, Plants, Food, Reading, Travel, Objects, and Sound. Both languages share these themes, but the questions are not intended as line-by-line translations.
 
 - The question number shows your position in the group. The progress strip counts distinct questions completed in that group.
-- The number beside a question in Collection is its lifetime completion count. Unfinished questions show `0`.
+- The number beside a question in Collection is its completion count for the current question-bank version. Unfinished questions show `0`.
 - Repeating a question increases its completion count, but does not count twice toward group progress.
 - Reaching question ten opens the group-end page. If you started partway through, the group may still have unfinished questions.
 - “Repeat this group” clears progress for the current language and group, without erasing completion counts. “Next group” keeps any progress already saved for that group.
@@ -71,9 +85,9 @@ The interface uses React 19, TypeScript, Vinext / Vite, and Tailwind CSS 4. Cont
 | `components/still/engine.ts` | Answer checking and exercise state transitions |
 | `components/still/draft-text.tsx`, `candidate-words.tsx` | Reference text and selectable blocks |
 | `components/still/collection-drawer.tsx` | Collection drawer, group browsing, and question selection |
-| `components/still/questions.ts` | Legacy questions, question types, group lookup, and display cleanup |
-| `components/still/group-content.ts` | Content for the ten themes and references to legacy questions |
-| `components/still/group-progress.ts` | Progress storage, deduplication, and migration of old records |
+| `components/still/questions.ts` | Question types, length limits, group lookup, and display cleanup |
+| `components/still/group-content.ts` | All 600 questions with explicit IDs preserving the original group order |
+| `components/still/group-progress.ts` | v2 completion counts, group progress storage, and deduplication |
 | `components/still/feedback.ts` | Key clicks, success and error sounds, and haptics |
 | `components/still/use-preferences.ts`, `use-feedback-preferences.ts` | Language, theme, sound, and haptic preferences |
 | `app/globals.css`, `air.css`, `live.css`, `fill.css` | Page styles, loaded in this order |
@@ -82,17 +96,21 @@ The interface uses React 19, TypeScript, Vinext / Vite, and Tailwind CSS 4. Cont
 
 Language, theme, sound, haptics, question completion counts, and group progress are stored in the current browser’s `localStorage`. Chinese and English group progress are kept separately. Refreshing preserves these records, but does not resume the question you were answering.
 
+This revision uses `still:question-completions:v2` and `still:group-progress:v2`, starting practice records from zero. The old `v1` counts, progress, and migration marker remain in the browser as a backup. They are not imported into v2, and there is no automatic restore control. Language, theme, sound, and haptic preferences are unchanged.
+
 There is no cross-device sync. Switching browsers or site addresses, or clearing site data, may make previous records unavailable. If storage is blocked, you can still practice, but records may not survive your next visit.
 
 ## Editing questions
 
-The bank combines legacy questions in `questions.ts` with theme content in `group-content.ts`. The latter uses `@number` references for old questions and stable text IDs for new ones. Line order determines the order within a group.
+All questions live in `group-content.ts`. Each line starts with an explicit ID, followed by `~` and the content. Words contain the full word or phrase; sentences use `|` to separate blocks. Recall marks gaps with `[word]` and appends two distractors separated by `|`. Spaces in English sentences are significant.
+
+`questions.ts` builds the question objects and assigns a `lengthTier`. Recall uses ordered text and gap `segments` to generate reading, hidden, and completed views from one source. Positions 1 and 9 determine the short and long tiers.
 
 Keep existing question and group IDs intact: local records depend on them. Maintain ten groups of ten questions for each language and mode, with no missing questions or duplicate group membership.
 
-Sentence display and answer checking both use `answers[0]`. Alternative answers remain in the data, but the current exercise does not accept an order that differs from the visible sentence. Recall questions have one answer and two distinct distractors. Spaces in English sentence fragments are part of the content; a shared function removes sentence-ending punctuation.
+Sentence display and checking both use `answers[0]`; a different order is not accepted. Short recall has one answer, while medium and long recall have two distinct answers. Both use two distinct distractors. A shared function removes sentence-ending punctuation. Write correct capitalization in the source rather than applying a display transform.
 
-Run `npx vitest run` after making changes. Existing tests cover bank size, group membership, normalized duplicate text, solvable answers, repeated characters, error resets, progress migration, and audio cancellation. Automated checks do not replace editorial review in either language.
+Run `npx vitest run` after making changes. Existing tests cover bank size, group membership, normalized duplicate text, solvable answers, repeated characters, two-gap resets, v1/v2 storage isolation, and audio cancellation. Automated checks do not replace editorial review in either language.
 
 ## Scope and limitations
 
@@ -109,4 +127,4 @@ These documents are in Chinese, except for the historical progress log:
 - [Pointer issue investigation](./docs/MOUSE_DIAGNOSTIC.md)
 - [Historical progress log](./logs/2026-09-09_10-55-38_CST_still-practice-ready.md)
 
-They record earlier stages of development. Some passages still describe the old 204-question bank, entry flow, or sounds. Check their dates and consult the current source when details differ. Keep both README files in sync when features change.
+The handoff and content review describe the new rules. The historical log still describes the old 204-question bank, not the current behavior. Check dates and consult the source when details differ. Keep both README files in sync when features change.

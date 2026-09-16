@@ -47,8 +47,7 @@ export function reduce(s: State, a: Action): State {
     return s.error
       ? { ...s, error: null, phase: 'input' }
       : { ...s, selected: s.selected.slice(0, -1), errors: 0 };
-  if (a.type === 'reveal')
-    return { ...s, hidden: !s.hidden, error: null, phase: 'input' };
+  if (a.type === 'reveal') return { ...initial, hidden: !s.hidden };
   if (a.type === 'pick') {
     if (s.selected.includes(a.id) || (a.q.mode === 'recall' && !s.hidden))
       return s;

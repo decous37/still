@@ -1,21 +1,38 @@
 import { groups, type Locale, type Mode } from './questions';
 
 export type GroupProgress = Record<string, string[]>;
-export const progressStorageKey = 'still:group-progress:v1';
-export const migrationStorageKey = 'still:group-progress-migrated:v1';
+export const progressStorageKey = 'still:group-progress:v2';
+export const completionStorageKey = 'still:question-completions:v2';
 type StorageAccess = Pick<Storage, 'getItem' | 'setItem'>;
+export function readCompletionCounts(
+  storage: StorageAccess,
+): Record<string, number> {
+  try {
+    const parsed = JSON.parse(storage.getItem(completionStorageKey) ?? '{}');
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed))
+      return {};
+    const result: Record<string, number> = {};
+    for (const [id, value] of Object.entries(parsed)) {
+      if (
+        typeof value === 'number' &&
+        Number.isSafeInteger(value) &&
+        value >= 0
+      )
+        result[id] = value;
+    }
+    return result;
+  } catch {
+    return {};
+  }
+}
 export const progressKey = (locale: Locale, groupId: string) =>
   `${locale}:${groupId}`;
 
-export function readGroupProgress(
-  storage: StorageAccess,
-  counts: Record<string, number>,
-): GroupProgress {
+export function readGroupProgress(storage: StorageAccess): GroupProgress {
   const result: GroupProgress = {};
   try {
     const raw = storage.getItem(progressStorageKey);
     const saved = raw ? JSON.parse(raw) : {};
-    const migrated = storage.getItem(migrationStorageKey) === '1';
     for (const locale of ['en', 'zh-CN'] as const) {
       for (const mode of ['word', 'sentence', 'recall'] as const) {
         for (const group of groups(mode)) {
@@ -32,9 +49,7 @@ export function readGroupProgress(
                   ),
                 ),
               ]
-            : migrated
-              ? []
-              : valid.filter((id) => counts[id] > 0);
+            : [];
         }
       }
     }
@@ -50,8 +65,7 @@ export function saveGroupProgress(
 ) {
   try {
     storage.setItem(progressStorageKey, JSON.stringify(progress));
-    // Only mark migration after progress has been stored successfully.
-    storage.setItem(migrationStorageKey, '1');
+    // v1 keys remain untouched as a local backup. Never seed v2 from old counts.
   } catch {
     /* Session progress remains usable. */
   }

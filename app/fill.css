@@ -95,6 +95,7 @@ html:has(.glass-drawer) {
   white-space: pre-wrap;
 }
 .draft-segment.is-filled,
+.recall-slot.is-filled,
 .draft-success,
 .draft-success .draft-segment {
   color: var(--filled);
@@ -113,6 +114,22 @@ html:has(.glass-drawer) {
 .recall-slot {
   display: inline-block;
   min-width: 2em;
+  max-width: 100%;
+  vertical-align: bottom;
+  box-sizing: border-box;
+  border-bottom: 1px solid transparent;
+  line-height: inherit;
+  min-height: 1.65em;
+  overflow-wrap: anywhere;
+}
+.recall-slot.is-hidden {
+  border-bottom-color: var(--muted-foreground);
+}
+.recall-slot.is-current {
+  border-bottom-color: var(--foreground);
+}
+.draft-error .recall-slot {
+  color: var(--error-ink) !important;
 }
 .draft-word .draft-segment {
   white-space: normal;
@@ -127,6 +144,7 @@ html:has(.glass-drawer) {
   align-items: center;
 }
 .fill-space .letter-piece {
+  max-width: 100%;
   padding: 0;
   min-width: 56px;
   min-height: 56px;
@@ -139,6 +157,8 @@ html:has(.glass-drawer) {
   outline-offset: 5px;
 }
 .fill-space .letter-piece > span {
+  white-space: normal;
+  overflow-wrap: anywhere;
   display: flex;
   justify-content: center;
   align-items: center;

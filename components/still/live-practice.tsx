@@ -138,6 +138,7 @@ export function LivePractice({
     onQuestionComplete,
   ]);
   const locked = state.phase !== 'input' || !enabled;
+  const twoGaps = q.mode === 'recall' && q.answers[0].length === 2;
   function pick(id: string) {
     if (locked) return;
     const { before, after } = send({ type: 'pick', id, q });
@@ -182,7 +183,11 @@ export function LivePractice({
               : '阅读补回'}
       </h1>
       <p className="fill-instruction">
-        {c.instructions[['word', 'sentence', 'recall'].indexOf(mode)]}
+        {twoGaps
+          ? lang === 'en'
+            ? 'Read, then hide two words. Fill from left to right.'
+            : '读一遍，藏起两个词，再从左到右补回'
+          : c.instructions[['word', 'sentence', 'recall'].indexOf(mode)]}
       </p>
       <div className="fill-stage">
         {state.paused ? (
@@ -207,7 +212,13 @@ export function LivePractice({
                   onClick={() => send({ type: 'reveal' })}
                 >
                   <Eye />
-                  {state.hidden ? c.reveal : c.ready}
+                  {state.hidden
+                    ? c.reveal
+                    : twoGaps
+                      ? lang === 'en'
+                        ? 'Hide two words'
+                        : '藏起两个词'
+                      : c.ready}
                 </Button>
               )}
             </div>
@@ -229,7 +240,11 @@ export function LivePractice({
           ? c.error
           : state.phase === 'success'
             ? c.success
-            : ''}
+            : q.mode === 'recall' && state.hidden && enabled
+              ? lang === 'en'
+                ? `Fill gap ${state.selected.length + 1} of ${q.answers[0].length}.`
+                : `请填写第${state.selected.length + 1}空，共${q.answers[0].length}空。`
+              : ''}
       </output>
     </section>
   );

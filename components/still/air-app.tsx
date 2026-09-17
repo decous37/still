@@ -11,6 +11,7 @@ import {
 import { useCallback, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { usePreferences } from './use-preferences';
+import { useKeyFlowPreference } from './use-key-flow';
 
 import { LivePractice } from './live-practice';
 import { groups, groupQuestions } from './questions';
@@ -70,6 +71,7 @@ const copybook = {
   },
 };
 export function AirApp() {
+  const { keyFlow, changeKeyFlow } = useKeyFlowPreference();
   const { ready, lang, theme, toggleLang, toggleTheme } = usePreferences();
   const [view, setView] = useState<View>('practice');
   const [mode, setMode] = useState<Mode>('word');
@@ -276,6 +278,7 @@ export function AirApp() {
             active={view === 'practice' && !collectionOpen}
             sound={sound}
             haptics={haptics}
+            keyFlow={keyFlow}
             completedCount={
               (groupProgress[progressKey(lang, groupId)] ?? []).length
             }
@@ -288,6 +291,24 @@ export function AirApp() {
           <section className="settings-space">
             <h1>{c.settings}</h1>
             <div className="settings-list">
+              <div className="setting-row">
+                <div>
+                  <h2 id="key-flow-label">
+                    {lang === 'en' ? 'Key Flow' : '轻键'}
+                  </h2>
+                  <p id="key-flow-description">
+                    {lang === 'en'
+                      ? 'Choose words with asdfghjkl, then qwertyuiop. Use English input.'
+                      : '按 asdfghjkl 选词，超出后接 qwertyuiop。请使用英文输入状态。'}
+                  </p>
+                </div>
+                <Switch
+                  aria-labelledby="key-flow-label"
+                  aria-describedby="key-flow-description"
+                  checked={keyFlow}
+                  onCheckedChange={changeKeyFlow}
+                />
+              </div>
               <div className="setting-row">
                 <div>
                   <h2 id="sound-label">

@@ -1,5 +1,7 @@
 'use client';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useKeyFlowInput } from './use-key-flow';
+import { isEditableTarget } from './key-flow';
 import { Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { createPracticeSet, type Locale, type Mode } from './questions';
@@ -43,6 +45,7 @@ export function LivePractice({
   active,
   sound,
   haptics,
+  keyFlow,
   completedCount,
   onFinish,
   onQuestionSelect,
@@ -55,6 +58,7 @@ export function LivePractice({
   active: boolean;
   sound: boolean;
   haptics: boolean;
+  keyFlow: boolean;
   completedCount: number;
   onFinish: () => void;
   onQuestionSelect: (id: string) => void;
@@ -71,6 +75,14 @@ export function LivePractice({
     q = round[index],
     c = copy[lang];
   const [state, setState] = useState<State>({ ...initial });
+  const [pressedId, setPressedId] = useState<string>();
+  const pressTimer = useRef<ReturnType<typeof setTimeout> | undefined>(
+    undefined,
+  );
+  useEffect(() => {
+    if (!active || !keyFlow) setPressedId(undefined);
+    return () => clearTimeout(pressTimer.current);
+  }, [active, keyFlow]);
   const latest = useRef(state),
     completed = useRef(false),
     heading = useRef<HTMLHeadingElement>(null);
@@ -138,21 +150,61 @@ export function LivePractice({
     onQuestionComplete,
   ]);
   const locked = state.phase !== 'input' || !enabled;
+  useEffect(() => {
+    if (q.mode !== 'recall' || locked) return;
+    const toggleRecall = (event: KeyboardEvent) => {
+      if (event.key !== ' ' || event.defaultPrevented || event.isComposing ||
+          event.keyCode === 229 || event.ctrlKey || event.metaKey || event.altKey ||
+          document.hidden || latest.current.paused || latest.current.phase !== 'input' ||
+          event.composedPath().some(isEditableTarget)) return;
+      const target = event.target;
+      // Keep Space native on navigation, settings and other unrelated controls.
+      if (target instanceof Element && target.closest('button, a, [role="switch"], [role="checkbox"]') &&
+          !target.closest('.candidate-space, .recall-control')) return;
+      event.preventDefault();
+      if (!event.repeat) send({ type: 'reveal' });
+    };
+    document.addEventListener('keydown', toggleRecall);
+    return () => document.removeEventListener('keydown', toggleRecall);
+  }, [q.mode, locked]);
   const twoGaps = q.mode === 'recall' && q.answers[0].length === 2;
-  function pick(id: string) {
-    if (locked) return;
-    const { before, after } = send({ type: 'pick', id, q });
-    if (after === before) return;
-    if (after.selected.length > before.selected.length) {
-      if (sound) {
-        if (after.phase === 'success') successSound();
-        else keySound();
+  const pick = useCallback(
+    (id: string) => {
+      if (
+        !active ||
+        document.hidden ||
+        latest.current.paused ||
+        latest.current.phase !== 'input'
+      )
+        return;
+      const { before, after } = send({ type: 'pick', id, q });
+      if (after === before) return;
+      setPressedId(id);
+      clearTimeout(pressTimer.current);
+      pressTimer.current = setTimeout(() => setPressedId(undefined), 120);
+      if (after.selected.length > before.selected.length) {
+        if (sound) {
+          if (after.phase === 'success') successSound();
+          else keySound();
+        }
+      } else if (after.phase === 'error') {
+        if (sound) errorSound();
+        if (haptics) errorHaptic();
       }
-    } else if (after.phase === 'error') {
-      if (sound) errorSound();
-      if (haptics) errorHaptic();
-    }
-  }
+    },
+    [active, q, sound, haptics],
+  );
+  const pickKey = useCallback(
+    (index: number) => {
+      const block = q.blocks[index];
+      if (block) pick(block.id);
+    },
+    [q, pick],
+  );
+  useKeyFlowInput(
+    keyFlow && !locked && (q.mode !== 'recall' || state.hidden),
+    pickKey,
+  );
   return (
     <section
       className={`practice-space live-space fill-space ${state.phase === 'transition' && enabled ? 'is-transitioning' : ''}`}
@@ -209,6 +261,8 @@ export function LivePractice({
                   variant="ghost"
                   className="air-text-button"
                   disabled={locked}
+                  aria-keyshortcuts="Space"
+                  title={lang === 'en' ? 'Space to hide or reveal' : '空格键隐藏或显示'}
                   onClick={() => send({ type: 'reveal' })}
                 >
                   <Eye />
@@ -229,6 +283,9 @@ export function LivePractice({
                   selected={state.selected}
                   locked={locked}
                   onPick={pick}
+                  keyFlow={keyFlow}
+                  pressedId={pressedId}
+                  lang={lang}
                 />
               ) : null}
             </div>

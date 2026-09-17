@@ -20,9 +20,19 @@ Correct selections turn green. A wrong selection briefly turns the whole text re
 
 For two-gap questions, a wrong answer in either gap resets both without revealing the sentence. “Read again” clears the attempt and shows the original text.
 
+In Recall, Space also hides or reveals the words, even with Key Flow off. Revealing clears the current attempt. This shortcut is inactive while paused, browsing Collection, or transitioning between questions.
+
 Use Collection in the header to browse modes, groups, and questions. Opening Collection or Preferences freezes the exercise. After leaving the tab for another app or page, click “Continue” when you return.
 
 Regular selections use a light key click. Finishing a question plays a short metallic chime; a mistake plays one electronic beep. Mute controls all three sounds, while haptics have a separate setting. Practice still works when the browser cannot play audio or vibrate.
+
+## Key Flow
+
+Use the keyboard to choose words without moving the mouse. Turn Key Flow on or off in Preferences. It starts enabled on devices with a fine pointer and hover support; your choice is saved on this device.
+
+Options follow `asdfghjkl`, then `qwertyuiop` after the ninth option. A small letter inside each option shows its key. Used options keep their position and key; pressing that key again does nothing and makes no sound. Mouse and touch selection still work.
+
+Use English input. Shortcuts follow the typed letter, in either case, rather than physical keyboard positions. Held-key repeats, IME composition, and Ctrl/Command/Alt combinations are ignored. Shortcuts pause in Collection, Preferences, paused or transitioning exercises, and the initial Recall reading stage. Tab, Enter, and Space keep their usual behavior; hiding, rereading, and resuming have no extra letter shortcuts. Up to 19 options receive keys; any additional options remain available by clicking or using Tab.
 
 ## Questions and progress
 

@@ -34,6 +34,18 @@ Options follow `asdfghjkl`, then `qwertyuiop` after the ninth option. A small le
 
 Use English input. Shortcuts follow the typed letter, in either case, rather than physical keyboard positions. Held-key repeats, IME composition, and Ctrl/Command/Alt combinations are ignored. Shortcuts pause in Collection, Preferences, paused or transitioning exercises, and the initial Recall reading stage. Tab, Enter, and Space keep their usual behavior; hiding, rereading, and resuming have no extra letter shortcuts. Up to 19 options receive keys; any additional options remain available by clicking or using Tab.
 
+## Prism (local experiment)
+
+Prism is a separate rhythm-themed word game: a dark stage, an original synthesized 120 BPM groove, and a continuous shuffled question queue. Play at your own pace; beat timing is not scored. The prototype has 12 Chinese and 12 English questions, split evenly between Words and Sentences. It does not change the regular 600-question bank or its records.
+
+Each correct selection earns 10 points and extends your combo. A mistake breaks the combo but keeps previous correct answers, so you can retry immediately. Time counts upward until you end the session. Results show session score, questions completed, accuracy, best combo, and active time. There are no permanent scores or rankings.
+
+Music starts after you press Start. Music, effects, mute, and low motion have separate controls. Leaving the tab or opening settings pauses play; resume manually when ready. Leaving or refreshing does not restore the session. System reduced-motion settings take priority, and practice remains available without audio. Scores are game feedback, not a measure of attention.
+
+Prism is off by default. Add `VITE_PRISM_ENABLED=true` to `.env.development.local` and restart the dev server to use the top-left Prism entry. See `.env.example`; the local file is excluded from Git. Production needs an explicit flag before building; this is not a live remote switch. Prism code and audiovisual resources load on demand.
+
+See [Prism handoff and verification](./docs/PRISM.md) for prototype checks and remaining release gates.
+
 ## Questions and progress
 
 The bank contains **600 questions**: 300 in Chinese and 300 in English. Each language has three modes, each mode has ten groups, and each group has ten questions.

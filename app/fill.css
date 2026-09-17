@@ -745,3 +745,7 @@ html:has(.glass-drawer) {
     animation: none !important;
   }
 }
+.still-brand-group { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
+.prism-entry { display: inline-flex; min-height: 44px; align-items: center; padding: 8px 14px; border: 1px solid #ad85c9; border-radius: 12px; color: #452d67; background: linear-gradient(120deg, #c6f8ed, #e4d1fa, #ffd9e9); font-size: .875rem; font-weight: 600; }
+.dark .prism-entry { color: #f4e8ff; background: linear-gradient(120deg, #204548, #392650, #4e2842); }
+.air-app[hidden] { display: none; }
